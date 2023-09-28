@@ -11,7 +11,7 @@ pub struct Coordinates {
 }
 
 // GameObject is the type of cell based on what object it holds.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum GameObject {
     EMPTY,
     NEIGHBOUR,
@@ -43,13 +43,23 @@ impl Board {
     }
 }
 
+impl fmt::Debug for GameObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MINE => write!(f, "*"),
+            Self::NEIGHBOUR => write!(f, "N"),
+            Self::EMPTY => write!(f, " "),
+        }
+    }
+}
+
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut table_vec: Vec<Vec<String>> = Vec::new();
         for row in &self.0 {
             let mut row_vec: Vec<String> = Vec::new();
-            for _column in row {
-                row_vec.push(String::from(" "));
+            for column in row {
+                row_vec.push(format!("{:?}", column.cell_type));
             }
             table_vec.push(row_vec);
         }
