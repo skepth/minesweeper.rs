@@ -3,9 +3,9 @@
 use cli_table::Table;
 use colored::Colorize;
 use rand::{distributions::Uniform, Rng};
-use std::{collections::HashSet, fmt};
+use std::{collections::HashSet, fmt, num::Wrapping};
 
-const SIZE_OF_BOARD: usize = 4;
+const SIZE_OF_BOARD: usize = 6;
 const NO_OF_MINES: usize = 4;
 
 // RenderCoordinates hold the bottom left position relative to the game window.
@@ -19,7 +19,7 @@ pub struct Coordinates {
 #[derive(Clone)]
 pub enum GameObject {
     EMPTY,
-    NEIGHBOUR,
+    NEIGHBOUR(u32),
     MINE,
 }
 
@@ -61,6 +61,131 @@ impl Board {
             }
         }
         println!("Log: hashsets => {:?}", random_coord);
+
+        //
+        for &(x, y) in random_coord.iter() {
+            // (x-1, y-1)
+            match self.0.get_mut(x.wrapping_sub(1)) {
+                Some(row) => match row.get_mut(y.wrapping_sub(1)) {
+                    Some(cell) => match cell.cell_type {
+                        GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
+                        GameObject::NEIGHBOUR(count) => {
+                            cell.cell_type = GameObject::NEIGHBOUR(count + 1)
+                        }
+                        GameObject::MINE => (),
+                    },
+                    None => (),
+                },
+                None => (),
+            }
+
+            // (x, y-1)
+            match self.0.get_mut(x) {
+                Some(row) => match row.get_mut(y.wrapping_sub(1)) {
+                    Some(cell) => match cell.cell_type {
+                        GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
+                        GameObject::NEIGHBOUR(count) => {
+                            cell.cell_type = GameObject::NEIGHBOUR(count + 1)
+                        }
+                        GameObject::MINE => (),
+                    },
+                    None => (),
+                },
+                None => (),
+            }
+
+            // (x+1, y+1)
+            match self.0.get_mut(x.wrapping_add(1)) {
+                Some(row) => match row.get_mut(y.wrapping_add(1)) {
+                    Some(cell) => match cell.cell_type {
+                        GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
+                        GameObject::NEIGHBOUR(count) => {
+                            cell.cell_type = GameObject::NEIGHBOUR(count + 1)
+                        }
+                        GameObject::MINE => (),
+                    },
+                    None => (),
+                },
+                None => (),
+            }
+
+            // (x-1, y)
+            match self.0.get_mut(x.wrapping_sub(1)) {
+                Some(row) => match row.get_mut(y) {
+                    Some(cell) => match cell.cell_type {
+                        GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
+                        GameObject::NEIGHBOUR(count) => {
+                            cell.cell_type = GameObject::NEIGHBOUR(count + 1)
+                        }
+                        GameObject::MINE => (),
+                    },
+                    None => (),
+                },
+                None => (),
+            }
+
+            // (x+1, y)
+            match self.0.get_mut(x.wrapping_add(1)) {
+                Some(row) => match row.get_mut(y) {
+                    Some(cell) => match cell.cell_type {
+                        GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
+                        GameObject::NEIGHBOUR(count) => {
+                            cell.cell_type = GameObject::NEIGHBOUR(count + 1)
+                        }
+                        GameObject::MINE => (),
+                    },
+                    None => (),
+                },
+                None => (),
+            }
+
+            // (x-1, y+1)
+            match self.0.get_mut(x.wrapping_sub(1)) {
+                Some(row) => match row.get_mut(y.wrapping_add(1)) {
+                    Some(cell) => match cell.cell_type {
+                        GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
+                        GameObject::NEIGHBOUR(count) => {
+                            cell.cell_type = GameObject::NEIGHBOUR(count + 1)
+                        }
+                        GameObject::MINE => (),
+                    },
+                    None => (),
+                },
+                None => (),
+            }
+
+            // (x, y+1)
+            match self.0.get_mut(x) {
+                Some(row) => match row.get_mut(y.wrapping_add(1)) {
+                    Some(cell) => match cell.cell_type {
+                        GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
+                        GameObject::NEIGHBOUR(count) => {
+                            cell.cell_type = GameObject::NEIGHBOUR(count + 1)
+                        }
+                        GameObject::MINE => (),
+                    },
+                    None => (),
+                },
+                None => (),
+            }
+
+            // (x+1, y+1)
+            match self.0.get_mut(x.wrapping_add(1)) {
+                Some(row) => match row.get_mut(y.wrapping_add(1)) {
+                    Some(cell) => match cell.cell_type {
+                        GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
+                        GameObject::NEIGHBOUR(count) => {
+                            cell.cell_type = GameObject::NEIGHBOUR(count + 1)
+                        }
+                        GameObject::MINE => (),
+                    },
+                    None => (),
+                },
+                None => (),
+            }
+            //
+        }
+
         self
     }
 }
@@ -69,7 +194,7 @@ impl fmt::Debug for GameObject {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MINE => write!(f, "{}", "*".red().bold()),
-            Self::NEIGHBOUR => write!(f, "{}", "N".blue()),
+            Self::NEIGHBOUR(count) => write!(f, "{}", count.to_string().blue()),
             Self::EMPTY => write!(f, " "),
         }
     }
@@ -78,10 +203,10 @@ impl fmt::Debug for GameObject {
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut table_vec: Vec<Vec<String>> = Vec::new();
-        for row in &self.0 {
+        for (x, row) in self.0.iter().enumerate() {
             let mut row_vec: Vec<String> = Vec::new();
-            for column in row {
-                row_vec.push(format!("{:?}", column.cell_type));
+            for (y, column) in row.iter().enumerate() {
+                row_vec.push(format!("{:?}\n({}, {})", column.cell_type, x, y));
             }
             table_vec.push(row_vec);
         }

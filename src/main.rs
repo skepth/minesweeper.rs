@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
 mod board;
-mod mines;
 
 fn debug_board(keys: Res<Input<KeyCode>>) {
     if keys.just_pressed(KeyCode::D) {
