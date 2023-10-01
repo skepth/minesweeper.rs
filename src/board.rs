@@ -3,21 +3,21 @@
 use cli_table::Table;
 use colored::Colorize;
 use rand::{distributions::Uniform, Rng};
-use std::{collections::HashSet, fmt, num::Wrapping};
-
-const SIZE_OF_BOARD: usize = 6;
-const NO_OF_MINES: usize = 4;
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+};
 
 // RenderCoordinates hold the bottom left position relative to the game window.
 #[derive(Debug, Clone)]
-pub struct Coordinates {
+struct Coordinates {
     x: f32,
     y: f32,
 }
 
 // GameObject is the type of cell based on what object it holds.
 #[derive(Clone)]
-pub enum GameObject {
+enum GameObject {
     EMPTY,
     NEIGHBOUR(u32),
     MINE,
@@ -25,13 +25,10 @@ pub enum GameObject {
 
 // Cell is the single entity on the game board.
 #[derive(Debug, Clone)]
-pub struct BoardCell {
+struct BoardCell {
     coordinates: Coordinates,
     cell_type: GameObject,
 }
-
-// Board is the collection of all the cells.
-pub struct Board(Vec<Vec<BoardCell>>);
 
 impl BoardCell {
     fn new() -> Self {
@@ -42,30 +39,57 @@ impl BoardCell {
     }
 }
 
+// Board is the collection of all the cells.
+pub struct Board(Vec<Vec<BoardCell>>);
+
 impl Board {
     // Constructor for the board sets the game objects & initializes the game.
-    pub fn new() -> Self {
-        Board(vec![vec![BoardCell::new(); SIZE_OF_BOARD]; SIZE_OF_BOARD]).place_mines(NO_OF_MINES)
+    fn new(size: usize) -> Self {
+        Board(vec![vec![BoardCell::new(); size]; size])
+    }
+}
+
+// Board buildler struct.
+pub struct BoardBuilder {
+    board_size: usize,
+    no_of_mines: usize,
+    mines: HashSet<(usize, usize)>,
+    neighbours: HashMap<(usize, usize), u32>,
+    board: Board,
+}
+
+impl BoardBuilder {
+    // Constructor for the board sets the game objects & initializes the game.
+    pub fn new(size: usize, mines: usize) -> Self {
+        BoardBuilder {
+            board_size: size,
+            no_of_mines: mines,
+            mines: HashSet::new(),
+            neighbours: HashMap::new(),
+            board: Board::new(size),
+        }
     }
 
     // Chooses random cells to place the mines on the board.
-    fn place_mines(mut self, no_of_mines: usize) -> Self {
-        let mut random_coord: HashSet<(usize, usize)> = HashSet::new();
+    pub fn place_mines(mut self) -> Self {
         let mut rng = rand::thread_rng();
-        let range = Uniform::new(0, SIZE_OF_BOARD - 1);
+        let range = Uniform::new(0, self.board_size - 1);
 
-        while random_coord.len() < no_of_mines {
+        while self.mines.len() < self.no_of_mines {
             let coord = (rng.sample(&range), rng.sample(&range));
-            if random_coord.insert(coord) {
-                self.0[coord.0][coord.1].cell_type = GameObject::MINE;
+            if self.mines.insert(coord) {
+                self.board.0[coord.0][coord.1].cell_type = GameObject::MINE;
             }
         }
-        println!("Log: hashsets => {:?}", random_coord);
+        println!("Log: hashsets => {:?}", self.mines);
+        self
+    }
 
-        //
-        for &(x, y) in random_coord.iter() {
+    // Places neighbours on the cells adjacent to mines.
+    pub fn compute_neighbours(mut self) -> Self {
+        for &(x, y) in self.mines.iter() {
             // (x-1, y-1)
-            match self.0.get_mut(x.wrapping_sub(1)) {
+            match self.board.0.get_mut(x.wrapping_sub(1)) {
                 Some(row) => match row.get_mut(y.wrapping_sub(1)) {
                     Some(cell) => match cell.cell_type {
                         GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
@@ -80,7 +104,7 @@ impl Board {
             }
 
             // (x, y-1)
-            match self.0.get_mut(x) {
+            match self.board.0.get_mut(x) {
                 Some(row) => match row.get_mut(y.wrapping_sub(1)) {
                     Some(cell) => match cell.cell_type {
                         GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
@@ -95,7 +119,7 @@ impl Board {
             }
 
             // (x+1, y+1)
-            match self.0.get_mut(x.wrapping_add(1)) {
+            match self.board.0.get_mut(x.wrapping_add(1)) {
                 Some(row) => match row.get_mut(y.wrapping_add(1)) {
                     Some(cell) => match cell.cell_type {
                         GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
@@ -110,7 +134,7 @@ impl Board {
             }
 
             // (x-1, y)
-            match self.0.get_mut(x.wrapping_sub(1)) {
+            match self.board.0.get_mut(x.wrapping_sub(1)) {
                 Some(row) => match row.get_mut(y) {
                     Some(cell) => match cell.cell_type {
                         GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
@@ -125,7 +149,7 @@ impl Board {
             }
 
             // (x+1, y)
-            match self.0.get_mut(x.wrapping_add(1)) {
+            match self.board.0.get_mut(x.wrapping_add(1)) {
                 Some(row) => match row.get_mut(y) {
                     Some(cell) => match cell.cell_type {
                         GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
@@ -140,7 +164,7 @@ impl Board {
             }
 
             // (x-1, y+1)
-            match self.0.get_mut(x.wrapping_sub(1)) {
+            match self.board.0.get_mut(x.wrapping_sub(1)) {
                 Some(row) => match row.get_mut(y.wrapping_add(1)) {
                     Some(cell) => match cell.cell_type {
                         GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
@@ -155,7 +179,7 @@ impl Board {
             }
 
             // (x, y+1)
-            match self.0.get_mut(x) {
+            match self.board.0.get_mut(x) {
                 Some(row) => match row.get_mut(y.wrapping_add(1)) {
                     Some(cell) => match cell.cell_type {
                         GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
@@ -170,7 +194,7 @@ impl Board {
             }
 
             // (x+1, y+1)
-            match self.0.get_mut(x.wrapping_add(1)) {
+            match self.board.0.get_mut(x.wrapping_add(1)) {
                 Some(row) => match row.get_mut(y.wrapping_add(1)) {
                     Some(cell) => match cell.cell_type {
                         GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
@@ -187,6 +211,11 @@ impl Board {
         }
 
         self
+    }
+
+    // Builder patter for the board.
+    pub fn build(self) -> Board {
+        self.board
     }
 }
 
