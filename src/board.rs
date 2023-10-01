@@ -9,14 +9,14 @@ use std::{
 };
 
 // RenderCoordinates hold the bottom left position relative to the game window.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Coordinates {
     x: f32,
     y: f32,
 }
 
 // GameObject is the type of cell based on what object it holds.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 enum GameObject {
     EMPTY,
     NEIGHBOUR(u32),
@@ -24,7 +24,7 @@ enum GameObject {
 }
 
 // Cell is the single entity on the game board.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct BoardCell {
     coordinates: Coordinates,
     cell_type: GameObject,
@@ -40,6 +40,7 @@ impl BoardCell {
 }
 
 // Board is the collection of all the cells.
+#[derive(PartialEq)]
 pub struct Board(Vec<Vec<BoardCell>>);
 
 impl Board {
@@ -118,9 +119,9 @@ impl BoardBuilder {
                 None => (),
             }
 
-            // (x+1, y+1)
+            // (x+1, y-1)
             match self.board.0.get_mut(x.wrapping_add(1)) {
-                Some(row) => match row.get_mut(y.wrapping_add(1)) {
+                Some(row) => match row.get_mut(y.wrapping_sub(1)) {
                     Some(cell) => match cell.cell_type {
                         GameObject::EMPTY => cell.cell_type = GameObject::NEIGHBOUR(1),
                         GameObject::NEIGHBOUR(count) => {
@@ -240,5 +241,125 @@ impl fmt::Debug for Board {
             table_vec.push(row_vec);
         }
         write!(f, "{}", table_vec.table().display().unwrap())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn top_left_mine_neighbours() {
+        let mut test_board_builder = BoardBuilder::new(4, 1);
+        let input_mines_set: HashSet<(usize, usize)> = vec![(0, 0)].into_iter().collect();
+
+        test_board_builder.board.0[0][0].cell_type = GameObject::MINE;
+        test_board_builder.mines = input_mines_set;
+
+        let mut want = Board::new(4);
+        want.0[0][0].cell_type = GameObject::MINE;
+        want.0[0][1].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[1][0].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[1][1].cell_type = GameObject::NEIGHBOUR(1);
+
+        let got = test_board_builder.compute_neighbours().build();
+        assert_eq!(
+            want, got,
+            "\n\nNeighbours are incorrect:\nWant:\n{:?}\n\nGot:\n{:?}",
+            want, got
+        );
+    }
+
+    #[test]
+    fn top_right_mine_neighbours() {
+        let mut test_board_builder = BoardBuilder::new(4, 1);
+        let input_mines_set: HashSet<(usize, usize)> = vec![(0, 3)].into_iter().collect();
+
+        test_board_builder.board.0[0][3].cell_type = GameObject::MINE;
+        test_board_builder.mines = input_mines_set;
+
+        let mut want = Board::new(4);
+        want.0[0][3].cell_type = GameObject::MINE;
+        want.0[0][2].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[1][2].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[1][3].cell_type = GameObject::NEIGHBOUR(1);
+
+        let got = test_board_builder.compute_neighbours().build();
+        assert_eq!(
+            want, got,
+            "\n\nNeighbours are incorrect:\nWant:\n{:?}\n\nGot:\n{:?}",
+            want, got
+        );
+    }
+
+    #[test]
+    fn bottom_right_mine_neighbours() {
+        let mut test_board_builder = BoardBuilder::new(4, 1);
+        let input_mines_set: HashSet<(usize, usize)> = vec![(3, 3)].into_iter().collect();
+
+        test_board_builder.board.0[3][3].cell_type = GameObject::MINE;
+        test_board_builder.mines = input_mines_set;
+
+        let mut want = Board::new(4);
+        want.0[3][3].cell_type = GameObject::MINE;
+        want.0[3][2].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[2][2].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[2][3].cell_type = GameObject::NEIGHBOUR(1);
+
+        let got = test_board_builder.compute_neighbours().build();
+        assert_eq!(
+            want, got,
+            "\n\nNeighbours are incorrect:\nWant:\n{:?}\n\nGot:\n{:?}",
+            want, got
+        );
+    }
+
+    #[test]
+    fn bottom_left_mine_neighbours() {
+        let mut test_board_builder = BoardBuilder::new(4, 1);
+        let input_mines_set: HashSet<(usize, usize)> = vec![(3, 0)].into_iter().collect();
+
+        test_board_builder.board.0[3][0].cell_type = GameObject::MINE;
+        test_board_builder.mines = input_mines_set;
+
+        let mut want = Board::new(4);
+        want.0[3][0].cell_type = GameObject::MINE;
+        want.0[2][0].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[2][1].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[3][1].cell_type = GameObject::NEIGHBOUR(1);
+
+        let got = test_board_builder.compute_neighbours().build();
+        assert_eq!(
+            want, got,
+            "\n\nNeighbours are incorrect:\nWant:\n{:?}\n\nGot:\n{:?}",
+            want, got
+        );
+    }
+
+    #[test]
+    fn center_mine_neighbours() {
+        let mut test_board_builder = BoardBuilder::new(4, 1);
+        let input_mines_set: HashSet<(usize, usize)> = vec![(2, 1)].into_iter().collect();
+
+        test_board_builder.board.0[2][1].cell_type = GameObject::MINE;
+        test_board_builder.mines = input_mines_set;
+
+        let mut want = Board::new(4);
+        want.0[2][1].cell_type = GameObject::MINE;
+        want.0[1][0].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[1][1].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[1][2].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[2][2].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[3][2].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[3][1].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[3][0].cell_type = GameObject::NEIGHBOUR(1);
+        want.0[2][0].cell_type = GameObject::NEIGHBOUR(1);
+
+        let got = test_board_builder.compute_neighbours().build();
+        assert_eq!(
+            want, got,
+            "\n\nNeighbours are incorrect:\nWant:\n{:?}\n\nGot:\n{:?}",
+            want, got
+        );
     }
 }
